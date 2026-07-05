@@ -1,53 +1,30 @@
-require("dotenv").config();
-
-const { REST, Routes } = require("discord.js");
-const fs = require("fs");
-const path = require("path");
-const config = require("./config.json");
+const { REST, Routes } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 
 const commands = [];
-
-const commandsPath = path.join(__dirname, "commands");
-
-const commandFiles = fs
-    .readdirSync(commandsPath)
-    .filter(file => file.endsWith(".js"));
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
-
-    const command = require(path.join(commandsPath, file));
-
-    if ("data" in command && "execute" in command) {
-        commands.push(command.data.toJSON());
-        console.log(`✅ /${command.data.name} preparado.`);
-    }
-
+  const filePath = path.join(commandsPath, file);
+  const command = require(filePath);
+  commands.push(command.data.toJSON());
 }
 
-const rawClientId = process.env.CLIENT_ID || "";
-const clientId = rawClientId.includes("=") ? rawClientId.split("=").pop() : rawClientId;
-
-const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+const rest = new REST().setToken(process.env.TOKEN);
 
 (async () => {
+  try {
+    console.log(`Registrando ${commands.length} comando(s)...`);
 
-    try {
+    const data = await rest.put(
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+      { body: commands },
+    );
 
-        console.log("🚀 Registrando comandos no servidor (guild)...");
-
-        await rest.put(
-            Routes.applicationGuildCommands(clientId, config.guildId),
-            {
-                body: commands
-            }
-        );
-
-        console.log("✅ Comandos registrados com sucesso!");
-
-    } catch (error) {
-
-        console.error(error);
-
-    }
-
+    console.log(`✅ ${data.length} comando(s) registrado(s) com sucesso!`);
+  } catch (error) {
+    console.error(error);
+  }
 })();
